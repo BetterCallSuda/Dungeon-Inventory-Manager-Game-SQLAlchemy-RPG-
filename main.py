@@ -134,3 +134,182 @@ def show_inventory(player):
 
     print("-------------------\n")
 
+
+def add_item(player, item_name, quantity):
+
+    item = session.query(Inventory).filter_by(
+        player_id=player.id,
+        item_name=item_name
+    ).first()
+
+    if item:
+        item.quantity += quantity
+    else:
+        item = Inventory(
+            item_name=item_name,
+            quantity=quantity,
+            player_id=player.id
+        )
+        session.add(item)
+
+    session.commit()
+
+
+# ----------------------------
+# TREASURE EVENT
+# ----------------------------
+
+def find_treasure(player):
+
+    gold = random.randint(5, 20)
+
+    print("\n💰 You found treasure!")
+    print("Gold gained:", gold)
+
+    player.gold += gold
+    add_item(player, "Gold Coin", gold)
+
+    session.commit()
+
+
+# ----------------------------
+# MONSTER BATTLE
+# ----------------------------
+
+def fight_monster(player):
+
+    monster = session.query(Monster).order_by(
+        random.random()
+    ).first()
+
+    monster_health = monster.health
+
+    print(f"\n👹 A {monster.name} appears!")
+    print("Monster Health:", monster.health)
+
+    while monster_health > 0 and player.health > 0:
+
+        action = input("\nFight (f) or Run (r): ")
+
+        if action == "r":
+            print("You escaped!")
+            return
+
+        player_attack = random.randint(5, 15)
+        monster_health -= player_attack
+
+        print("You hit the monster for", player_attack)
+
+        if monster_health <= 0:
+            print("Monster defeated! 🏆")
+
+            player.gold += 10
+            player.level += 1
+
+            battle = Battle(
+                monster_name=monster.name,
+                result="Win",
+                player_id=player.id
+            )
+
+            session.add(battle)
+            session.commit()
+
+            return
+
+        monster_attack = monster.damage
+        player.health -= monster_attack
+
+        print("Monster hits you for", monster_attack)
+        print("Your health:", player.health)
+
+    if player.health <= 0:
+        print("\n💀 You were defeated!")
+
+        battle = Battle(
+            monster_name=monster.name,
+            result="Lose",
+            player_id=player.id
+        )
+
+        session.add(battle)
+        session.commit()
+
+        exit()
+
+
+# ----------------------------
+# ROOM EXPLORATION
+# ----------------------------
+
+def explore_room(player):
+
+    event = random.choice(["monster", "treasure", "trap"])
+
+    if event == "monster":
+        fight_monster(player)
+
+    elif event == "treasure":
+        find_treasure(player)
+
+    else:
+        damage = random.randint(5, 15)
+        player.health -= damage
+
+        print("\n⚠️ Trap triggered!")
+        print("Damage:", damage)
+        print("Health left:", player.health)
+
+        session.commit()
+
+
+# ----------------------------
+# MAIN GAME LOOP
+# ----------------------------
+
+def game_loop(player):
+
+    while True:
+
+        print("\n===== DUNGEON MENU =====")
+        print("1. Explore Dungeon")
+        print("2. View Stats")
+        print("3. Inventory")
+        print("4. Exit Game")
+
+        choice = input("Choose option: ")
+
+        if choice == "1":
+            explore_room(player)
+
+        elif choice == "2":
+            show_stats(player)
+
+        elif choice == "3":
+            show_inventory(player)
+
+        elif choice == "4":
+            print("Game saved. Goodbye!")
+            break
+
+        else:
+            print("Invalid choice")
+
+
+# ----------------------------
+# START GAME
+# ----------------------------
+
+def main():
+
+    create_monsters()
+
+    print("==== DUNGEON RPG ====")
+
+    player = create_player()
+
+    game_loop(player)
+
+
+if __name__ == "__main__":
+    main()
